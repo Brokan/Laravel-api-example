@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+mkdir -p /run/php
+
+cd /var/www || exit 1
+
+NEED_COMPOSER_INSTALL=1
+
+if [ -d /var/www/vendor ]; then 
+    NEED_COMPOSER_INSTALL=0
+fi
+
+if [ $NEED_COMPOSER_INSTALL = 1 ]; then
+  echo "------------ Composer install ------------"
+  composer install
+fi
+
+php-fpm7.4 -F -R
+
+echo "Installation finished"

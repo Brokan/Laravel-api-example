@@ -1,0 +1,70 @@
+version: "3.3"
+
+networks:
+  test_api_example.public_network:
+    driver: bridge
+services:
+  test_api_example:
+    platform: linux/arm64/v8
+    container_name: test_api_example
+    restart: unless-stopped
+    working_dir: /var/www/
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    volumes:
+      - ../project:/var/www
+    networks:
+      - test_api_example.public_network
+    labels:
+      - "traefik.enable=false"
+  test_api_example_nginx:
+    platform: linux/amd64
+    image: nginx:alpine
+    container_name: test_api_example.nginx
+    restart: unless-stopped
+    volumes:
+      - ../project/public:/var/www/public
+      - ./app/nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - test_api_example
+    networks:
+      - test_api_example.public_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=test_api_example.public_network"
+      - "traefik.http.routers.test_api_example.entrypoints=http"
+      - "traefik.http.routers.test_api_example.rule=Host(`test_api_example.localhost`)"
+      - "traefik.http.routers.test_api_example.middlewares=traefik-https-redirect"
+      - "traefik.http.routers.test_api_example-secure.entrypoints=https"
+      - "traefik.http.routers.test_api_example-secure.rule=Host(`test_api_example.localhost`)"
+      - "traefik.http.routers.test_api_example-secure.tls.certresolver=http"
+  test_api_example_traefik:
+    platform: linux/arm64/v8
+    image: traefik:latest
+    container_name: test_api_example.traefik
+    restart: always
+    build:
+      context: ./traefik/
+      dockerfile: Dockerfile
+    depends_on:
+      - test_api_example_nginx
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml
+    ports:
+      - 80:80
+      - 443:443
+    networks:
+      - test_api_example.public_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.entrypoints=http"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.test_api_example.localhost`)"
+      - "traefik.http.middlewares.traefik-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.traefik.middlewares=traefik-https-redirect"
+      - "traefik.http.routers.traefik-secure.entrypoints=https"
+      - "traefik.http.routers.traefik-secure.rule=Host(`traefik.test_api_example.localhost`)"
+      - "traefik.http.routers.traefik-secure.tls=true"
+      - "traefik.http.routers.traefik-secure.tls.certresolver=http"
+      - "traefik.http.routers.traefik-secure.service=api@internal"

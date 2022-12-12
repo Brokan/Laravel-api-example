@@ -1,0 +1,14 @@
+http:
+  routers:
+    traefik:
+      rule: "Host(`*.test_api_example.localhost`)"
+      service: "api@internal"
+      tls:
+        domains:
+          - main: "test_api_example.localhost"
+            sans:
+              - "*.test_api_example.localhost"
+#tls:
+#  certificates:
+#    - certFile: /etc/certs/test_api_example.cert
+#      keyFile: /etc/certs/test_api_example.key
